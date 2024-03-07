@@ -5,6 +5,28 @@ from scipy.ndimage import zoom
 import torch.nn as nn
 import SimpleITK as sitk
 import pandas as pd
+import cv2
+import datetime
+
+def get_session_name():
+    current_datetime = datetime.now()
+    formatted_string = current_datetime.strftime("%-m_%-d_%y_%H%M")
+
+    return formatted_string
+
+def save_two_predictions_and_masks_randomly(masks, pred, names, img_save_path):
+    '''randomly saves two prediction + gt at location img_save_path'''
+    rand_idx = random.sample(range(len(pred)), 2)
+    for i in rand_idx:
+        pred_tmp = pred[i][0].cpu().detach().numpy()
+        mask_tmp = masks[i].cpu().detach().numpy()
+        pred_tmp[pred_tmp >= 0.5] = 255
+        pred_tmp[pred_tmp < 0.5] = 0
+        mask_tmp[mask_tmp > 0] = 255
+        mask_tmp[mask_tmp <= 0] = 0
+
+        cv2.imwrite(img_save_path + names[i][:-4] + "_pred.jpg", pred_tmp)
+        cv2.imwrite(img_save_path + names[i][:-4] + "_gt.jpg", mask_tmp)
 
 def read_csv(filename):
     df = pd.read_csv(filename)
