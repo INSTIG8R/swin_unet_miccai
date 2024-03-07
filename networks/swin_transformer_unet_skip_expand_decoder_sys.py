@@ -4,6 +4,9 @@ import torch.utils.checkpoint as checkpoint
 from einops import rearrange
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
+from .GuideEncoder import GuideEncoder
+
+
 
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
@@ -609,6 +612,7 @@ class SwinTransformerSys(nn.Module):
         num_patches = self.patch_embed.num_patches
         patches_resolution = self.patch_embed.patches_resolution
         self.patches_resolution = patches_resolution
+        self.GuideEncoder = GuideEncoder(in_channels=96, text_len=3136)
 
         # absolute position embedding
         if self.ape:
@@ -692,8 +696,9 @@ class SwinTransformerSys(nn.Module):
         return {'relative_position_bias_table'}
 
     #Encoder and Bottleneck
-    def forward_features(self, x):
+    def forward_features(self, x,text):
         x = self.patch_embed(x)
+        x = self.GuideEncoder(x,text)
         if self.ape:
             x = x + self.absolute_pos_embed
         x = self.pos_drop(x)
@@ -734,8 +739,8 @@ class SwinTransformerSys(nn.Module):
             
         return x
 
-    def forward(self, x):
-        x, x_downsample = self.forward_features(x)
+    def forward(self, x,text):
+        x, x_downsample = self.forward_features(x,text)
         x = self.forward_up_features(x,x_downsample)
         x = self.up_x4(x)
 

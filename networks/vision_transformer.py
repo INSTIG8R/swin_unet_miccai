@@ -18,6 +18,7 @@ from torch.nn.modules.utils import _pair
 from scipy import ndimage
 from .swin_transformer_unet_skip_expand_decoder_sys import SwinTransformerSys
 
+
 logger = logging.getLogger(__name__)
 
 class SwinUnet(nn.Module):
@@ -26,6 +27,7 @@ class SwinUnet(nn.Module):
         self.num_classes = num_classes
         self.zero_head = zero_head
         self.config = config
+        
 
         self.swin_unet = SwinTransformerSys(img_size=config.DATA.IMG_SIZE,
                                 patch_size=config.MODEL.SWIN.PATCH_SIZE,
@@ -43,11 +45,13 @@ class SwinUnet(nn.Module):
                                 ape=config.MODEL.SWIN.APE,
                                 patch_norm=config.MODEL.SWIN.PATCH_NORM,
                                 use_checkpoint=config.TRAIN.USE_CHECKPOINT)
+        
 
-    def forward(self, x):
+
+    def forward(self, x,text):
         if x.size()[1] == 1:
             x = x.repeat(1,3,1,1)
-        logits = self.swin_unet(x)
+        logits = self.swin_unet(x,text)
         return logits
 
     def load_from(self, config):
@@ -86,4 +90,3 @@ class SwinUnet(nn.Module):
             # print(msg)
         else:
             print("none pretrain")
- 

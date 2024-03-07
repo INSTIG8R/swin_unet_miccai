@@ -6,6 +6,7 @@ import torch
 from scipy import ndimage
 from scipy.ndimage.interpolation import zoom
 from torch.utils.data import Dataset
+from bert_embedding import BertEmbedding
 
 
 def random_rot_flip(image, label):
@@ -30,7 +31,7 @@ class RandomGenerator(object):
         self.output_size = output_size
 
     def __call__(self, sample):
-        image, label = sample['image'], sample['label']
+        image, label, text = sample['image'], sample['label'], sample['text']
 
         if random.random() > 0.5:
             image, label = random_rot_flip(image, label)
@@ -42,16 +43,19 @@ class RandomGenerator(object):
             label = zoom(label, (self.output_size[0] / x, self.output_size[1] / y), order=0)
         image = torch.from_numpy(image.astype(np.float32)).unsqueeze(0)
         label = torch.from_numpy(label.astype(np.float32))
-        sample = {'image': image, 'label': label.long()}
+        text = torch.Tensor(text)
+        sample = {'image': image, 'label': label.long(), 'text': text}
         return sample
 
 
 class Synapse_dataset(Dataset):
-    def __init__(self, base_dir, list_dir, split, transform=None):
+    def __init__(self, base_dir, list_dir, split, row_text,transform=None):
         self.transform = transform  # using transform in torch!
         self.split = split
         self.sample_list = open(os.path.join(list_dir, self.split+'.txt')).readlines()
         self.data_dir = base_dir
+        self.rowtext = row_text
+        self.bert_embedding = BertEmbedding()
 
     def __len__(self):
         return len(self.sample_list)
@@ -68,7 +72,14 @@ class Synapse_dataset(Dataset):
             data = h5py.File(filepath)
             image, label = data['image'][:], data['label'][:]
 
-        sample = {'image': image, 'label': label}
+        text = self.rowtext[slice_name+'.png']
+        text = text.split('\n')
+        text_token = self.bert_embedding(text)
+        text = np.array(text_token[0][1])
+        if text.shape[0] > 10:
+            text = text[:10, :]
+
+        sample = {'image': image, 'label': label, 'text': text}
         if self.transform:
             sample = self.transform(sample)
         sample['case_name'] = self.sample_list[idx].strip('\n')

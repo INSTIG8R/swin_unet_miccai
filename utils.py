@@ -4,6 +4,17 @@ from medpy import metric
 from scipy.ndimage import zoom
 import torch.nn as nn
 import SimpleITK as sitk
+import pandas as pd
+
+def read_csv(filename):
+    df = pd.read_csv(filename)
+    text = {}
+    for i in df.index.values:  # Gets the index of the row number and traverses it
+        count = len(df.generated_caption[i].split())
+        if count < 9:
+            df.generated_caption[i] = df.generated_caption[i] + ' EOF XXX' * (50 - count)
+        text[df.image[i]] = df.generated_caption[i]
+    return text  # return dict (key: values)
 
 
 class DiceLoss(nn.Module):

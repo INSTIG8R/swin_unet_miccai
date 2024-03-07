@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from utils import DiceLoss
 from torchvision import transforms
-from utils import test_single_volume
+from utils import test_single_volume, read_csv
 
 def trainer_synapse(args, model, snapshot_path):
     from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
@@ -26,7 +26,9 @@ def trainer_synapse(args, model, snapshot_path):
     num_classes = args.num_classes
     batch_size = args.batch_size * args.n_gpu
     # max_iterations = args.max_iterations
-    db_train = Synapse_dataset(base_dir=args.root_path, list_dir=args.list_dir, split="train",
+    train_text = read_csv(args.root_path + '/synapse_train.csv')
+    # val_text = read_csv(args.root_path + 'generated_text.csv')
+    db_train = Synapse_dataset(base_dir=args.root_path, list_dir=args.list_dir, row_text=train_text, split="train",
                                transform=transforms.Compose(
                                    [RandomGenerator(output_size=[args.img_size, args.img_size])]))
     print("The length of train set is: {}".format(len(db_train)))
@@ -51,9 +53,9 @@ def trainer_synapse(args, model, snapshot_path):
     iterator = tqdm(range(max_epoch), ncols=70)
     for epoch_num in iterator:
         for i_batch, sampled_batch in enumerate(trainloader):
-            image_batch, label_batch = sampled_batch['image'], sampled_batch['label']
-            image_batch, label_batch = image_batch.cuda(), label_batch.cuda()
-            outputs = model(image_batch)
+            image_batch, label_batch, text_batch = sampled_batch['image'], sampled_batch['label'], sampled_batch['text']
+            image_batch, label_batch, text_batch = image_batch.cuda(), label_batch.cuda(), text_batch.cuda()
+            outputs = model(image_batch,text_batch)
             loss_ce = ce_loss(outputs, label_batch[:].long())
             loss_dice = dice_loss(outputs, label_batch, softmax=True)
             loss = 0.4 * loss_ce + 0.6 * loss_dice
