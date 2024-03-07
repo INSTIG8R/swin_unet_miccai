@@ -5,6 +5,9 @@ from einops import rearrange
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
 from .GuideEncoder import GuideEncoder
+from .AttentionGate import AttentionGate
+from .Convolution import Convolution
+from .pixlevel import PixLevelModule
 
 
 
@@ -589,7 +592,7 @@ class SwinTransformerSys(nn.Module):
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
-                 use_checkpoint=False, final_upsample="expand_first", **kwargs):
+                 use_checkpoint=False, attention_gate = False,resswin = False,final_upsample="expand_first", **kwargs):
         super().__init__()
 
         print("SwinTransformerSys expand initial----depths:{};depths_decoder:{};drop_path_rate:{};num_classes:{}".format(depths,
@@ -604,6 +607,14 @@ class SwinTransformerSys(nn.Module):
         self.num_features_up = int(embed_dim * 2)
         self.mlp_ratio = mlp_ratio
         self.final_upsample = final_upsample
+        self.AttentionGate = attention_gate
+        self.ResSwin = resswin
+        self.AttentionGate3 = AttentionGate(gate_input_channel=768,skip_input_channel=384)
+        self.AttentionGate2 = AttentionGate(gate_input_channel=384,skip_input_channel=192)
+        self.AttentionGate1 = AttentionGate(gate_input_channel=192,skip_input_channel=96)
+        self.ResSwin1 = Convolution(in_channels=96,out_channels=192)
+        self.ResSwin2 = Convolution(in_channels=192,out_channels=384)
+        self.ResSwin3 = Convolution(in_channels=384,out_channels=768)
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -706,7 +717,19 @@ class SwinTransformerSys(nn.Module):
 
         for layer in self.layers:
             x_downsample.append(x)
+            res = x
+            chan = x.shape[2]
             x = layer(x)
+            if self.ResSwin == True:
+                if layer == 0:
+                    res_down = self.ResSwin1(res)
+                    x = res_down+x
+                elif layer == 1:
+                    res_down = self.ResSwin2(res)
+                    x = res_down+x
+                elif layer == 2:
+                    res_down = self.ResSwin3(res)
+                    x = res_down+x
 
         x = self.norm(x)  # B L C
   
@@ -718,7 +741,11 @@ class SwinTransformerSys(nn.Module):
             if inx == 0:
                 x = layer_up(x)
             else:
-                x = torch.cat([x,x_downsample[3-inx]],-1)
+                skip = x_downsample[3-inx]
+                pix = PixLevelModule(x.shape[2])
+                pix = pix.cuda()
+                skip_pix = pix(skip)
+                x = torch.cat([x,skip_pix],-1)
                 x = self.concat_back_dim[inx](x)
                 x = layer_up(x)
 
