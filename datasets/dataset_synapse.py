@@ -53,6 +53,10 @@ class Synapse_dataset(Dataset):
         self.transform = transform  # using transform in torch!
         self.split = split
         self.sample_list = open(os.path.join(list_dir, self.split+'.txt')).readlines()
+        if self.sample_list[0].endswith('.h5'):
+            self.input_type = "3D"
+        else:
+            self.input_type = "2D"
         self.data_dir = base_dir
         self.rowtext = row_text
         self.bert_embedding = BertEmbedding()
@@ -61,7 +65,17 @@ class Synapse_dataset(Dataset):
         return len(self.sample_list)
 
     def __getitem__(self, idx):
-        if self.split == "train":
+        # if self.split == "train":
+        #     slice_name = self.sample_list[idx].strip('\n')
+        #     data_path = os.path.join(self.data_dir, slice_name+'.npz')
+        #     data = np.load(data_path)
+        #     image, label = data['image'], data['label']
+        # else:
+        #     vol_name = self.sample_list[idx].strip('\n')
+        #     filepath = self.data_dir + "/{}.npy.h5".format(vol_name)
+        #     data = h5py.File(filepath)
+        #     image, label = data['image'][:], data['label'][:]
+        if self.input_type == "2D":
             slice_name = self.sample_list[idx].strip('\n')
             data_path = os.path.join(self.data_dir, slice_name+'.npz')
             data = np.load(data_path)
