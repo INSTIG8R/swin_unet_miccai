@@ -66,18 +66,33 @@ class Synapse_dataset(Dataset):
             data_path = os.path.join(self.data_dir, slice_name+'.npz')
             data = np.load(data_path)
             image, label = data['image'], data['label']
+            text = self.rowtext[slice_name+'.png']
+            text = text.split('\n')
+            text_token = self.bert_embedding(text)
+            text = np.array(text_token[0][1])
+            if text.shape[0] > 10:
+                text = text[:10, :]
         else:
             vol_name = self.sample_list[idx].strip('\n')
             filepath = self.data_dir + "/{}.npy.h5".format(vol_name)
             data = h5py.File(filepath)
             image, label = data['image'][:], data['label'][:]
+            text = []
+            for j in range(len(image)):
+                text_tmp = self.rowtext[f"{slice_name}_slice_{j}.png"]
+                text_tmp = text_tmp.split('\n')
+                text_tmp_token = self.bert_embedding(text_tmp)
+                text_tmp = np.array(text_tmp_token[0][1])
+                if text_tmp.shape[0] > 10:
+                    text_tmp = text_tmp[:10, :]
+                text.append(text_tmp)
 
-        text = self.rowtext[slice_name+'.png']
-        text = text.split('\n')
-        text_token = self.bert_embedding(text)
-        text = np.array(text_token[0][1])
-        if text.shape[0] > 10:
-            text = text[:10, :]
+        # text = self.rowtext[slice_name+'.png']
+        # text = text.split('\n')
+        # text_token = self.bert_embedding(text)
+        # text = np.array(text_token[0][1])
+        # if text.shape[0] > 10:
+        #     text = text[:10, :]
 
         sample = {'image': image, 'label': label, 'text': text}
         if self.transform:
