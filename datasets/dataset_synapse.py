@@ -55,7 +55,7 @@ class Synapse_dataset(Dataset):
         self.sample_list = open(os.path.join(list_dir, self.split+'.txt')).readlines()
         self.data_dir = base_dir
         self.rowtext = row_text
-        self.bert_embedding = BertEmbedding()
+        self.bert_embedding = BertEmbedding(max_seq_length=75)
 
     def __len__(self):
         return len(self.sample_list)
@@ -70,8 +70,8 @@ class Synapse_dataset(Dataset):
             text = text.split('\n')
             text_token = self.bert_embedding(text)
             text = np.array(text_token[0][1])
-            if text.shape[0] > 10:
-                text = text[:10, :]
+            if text.shape[0] > 40:
+                text = text[:40, :]
         else:
             vol_name = self.sample_list[idx].strip('\n')
             filepath = self.data_dir + "/{}.npy.h5".format(vol_name)
@@ -79,12 +79,12 @@ class Synapse_dataset(Dataset):
             image, label = data['image'][:], data['label'][:]
             text = []
             for j in range(len(image)):
-                text_tmp = self.rowtext[f"{slice_name}_slice_{j}.png"]
+                text_tmp = self.rowtext[f"{vol_name}_slice_{j}.png"]
                 text_tmp = text_tmp.split('\n')
                 text_tmp_token = self.bert_embedding(text_tmp)
                 text_tmp = np.array(text_tmp_token[0][1])
-                if text_tmp.shape[0] > 10:
-                    text_tmp = text_tmp[:10, :]
+                if text_tmp.shape[0] > 40:
+                    text_tmp = text_tmp[:40, :]
                 text.append(text_tmp)
 
         # text = self.rowtext[slice_name+'.png']

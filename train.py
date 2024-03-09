@@ -11,7 +11,7 @@ from config import get_config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
-                    default='./datasets/Synapse/train_npz', help='root dir for data')
+                    default='/home/sakir-w4-linux/Development/Thesis/ECCV/Codes/Swin-Unet/Swin-Unet/datasets/Synapse/train_npz', help='root dir for data')
 parser.add_argument('--dataset', type=str,
                     default='Synapse', help='experiment_name')
 parser.add_argument('--list_dir', type=str,

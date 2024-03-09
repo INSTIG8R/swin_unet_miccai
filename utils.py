@@ -10,10 +10,10 @@ def read_csv(filename):
     df = pd.read_csv(filename)
     text = {}
     for i in df.index.values:  # Gets the index of the row number and traverses it
-        count = len(df.generated_caption[i].split())
-        if count < 9:
-            df.generated_caption[i] = df.generated_caption[i] + ' EOF XXX' * (50 - count)
-        text[df.image[i]] = df.generated_caption[i]
+        count = len(df.Description[i].split())
+        if count < 49:
+            df.Description[i] = df.Description[i] + ' EOF XXX' * (49 - count)
+        text[df.Image[i]] = df.Description[i]
     return text  # return dict (key: values)
 
 
@@ -61,6 +61,7 @@ def calculate_metric_percase(pred, gt):
     gt[gt > 0] = 1
     if pred.sum() > 0 and gt.sum()>0:
         dice = metric.binary.dc(pred, gt)
+        print(dice)
         hd95 = metric.binary.hd95(pred, gt)
         return dice, hd95
     elif pred.sum() > 0 and gt.sum()==0:
@@ -69,19 +70,22 @@ def calculate_metric_percase(pred, gt):
         return 0, 0
 
 
-def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1):
+def test_single_volume(image, label, net, classes, text, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1):
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
     if len(image.shape) == 3:
         prediction = np.zeros_like(label)
         for ind in range(image.shape[0]):
+            print(ind)
             slice = image[ind, :, :]
+            text_ind = text[ind].cpu().detach().numpy()
             x, y = slice.shape[0], slice.shape[1]
             if x != patch_size[0] or y != patch_size[1]:
                 slice = zoom(slice, (patch_size[0] / x, patch_size[1] / y), order=3)  # previous using 0
             input = torch.from_numpy(slice).unsqueeze(0).unsqueeze(0).float().cuda()
+            text_ind = torch.from_numpy(text_ind).float().cuda()
             net.eval()
             with torch.no_grad():
-                outputs = net(input)
+                outputs = net(input, text_ind)
                 out = torch.argmax(torch.softmax(outputs, dim=1), dim=1).squeeze(0)
                 out = out.cpu().detach().numpy()
                 if x != patch_size[0] or y != patch_size[1]:
@@ -98,6 +102,7 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
             prediction = out.cpu().detach().numpy()
     metric_list = []
     for i in range(1, classes):
+        print(i)
         metric_list.append(calculate_metric_percase(prediction == i, label == i))
 
     if test_save_path is not None:

@@ -28,7 +28,7 @@ class PositionalEncoding(nn.Module):
 
 class GuideEncoderLayer(nn.Module):
 
-    def __init__(self, in_channels:int, output_text_len:int, input_text_len:int=10, embed_dim:int=768):
+    def __init__(self, in_channels:int, output_text_len:int, input_text_len:int=40, embed_dim:int=768):
 
         super(GuideEncoderLayer, self).__init__()
 

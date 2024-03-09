@@ -26,7 +26,7 @@ def trainer_synapse(args, model, snapshot_path):
     num_classes = args.num_classes
     batch_size = args.batch_size * args.n_gpu
     # max_iterations = args.max_iterations
-    train_text = read_csv(args.root_path + '/synapse_train.csv')
+    train_text = read_csv(args.root_path + 'generated_text.csv')
     # val_text = read_csv(args.root_path + 'generated_text.csv')
     db_train = Synapse_dataset(base_dir=args.root_path, list_dir=args.list_dir, row_text=train_text, split="train",
                                transform=transforms.Compose(

@@ -10,14 +10,14 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from datasets.dataset_synapse import Synapse_dataset
-from utils import test_single_volume
+from utils import test_single_volume, read_csv
 from networks.vision_transformer import SwinUnet as ViT_seg
 from trainer import trainer_synapse
 from config import get_config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--volume_path', type=str,
-                    default='./datasets/Synapse', help='root dir for validation volume data')  # for acdc volume_path=root_dir
+                    default='/home/sakir-w4-linux/Development/Thesis/ECCV/Codes/Swin-Unet/Swin-Unet/datasets/Synapse', help='root dir for validation volume data')  # for acdc volume_path=root_dir
 parser.add_argument('--dataset', type=str,
                     default='Synapse', help='experiment_name')
 parser.add_argument('--num_classes', type=int,
@@ -66,15 +66,16 @@ config = get_config(args)
 
 
 def inference(args, model, test_save_path=None):
-    db_test = args.Dataset(base_dir=args.volume_path, split="test_vol", list_dir=args.list_dir)
+    test_text = read_csv(args.volume_path + 'generated_text.csv')
+    db_test = Synapse_dataset(base_dir=args.volume_path, row_text=test_text , split="test_vol", list_dir=args.list_dir)
     testloader = DataLoader(db_test, batch_size=1, shuffle=False, num_workers=1)
     logging.info("{} test iterations per epoch".format(len(testloader)))
     model.eval()
     metric_list = 0.0
     for i_batch, sampled_batch in tqdm(enumerate(testloader)):
         h, w = sampled_batch["image"].size()[2:]
-        image, label, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch['case_name'][0]
-        metric_i = test_single_volume(image, label, model, classes=args.num_classes, patch_size=[args.img_size, args.img_size],
+        image, label, text, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch["text"], sampled_batch['case_name'][0]
+        metric_i = test_single_volume(image, label, model, text=text, classes=args.num_classes, patch_size=[args.img_size, args.img_size],
                                       test_save_path=test_save_path, case=case_name, z_spacing=args.z_spacing)
         metric_list += np.array(metric_i)
         logging.info('idx %d case %s mean_dice %f mean_hd95 %f' % (i_batch, case_name, np.mean(metric_i, axis=0)[0], np.mean(metric_i, axis=0)[1]))
